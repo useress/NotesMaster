@@ -1,11 +1,26 @@
+import json
+
 from design import *
 from datetime import date, time
+import os
+import sys
+import subprocess
 
+
+def restart_application():
+        # Get the current Python script file path
+        script_path = sys.argv[0]
+        
+        # Launch the launcher script to restart the application
+        subprocess.Popen([sys.executable, script_path] + sys.argv[1:])
+        sys.exit()  # Exit the current instance of the application 
+        
 
 
 class CreationWindow(QtWidgets.QMainWindow): # второе окно для выбора параметров заметки
     def __init__(self, main_win, notes, scrollLayout):
         super().__init__()
+        
         self.setWindowTitle('Creation')
         self.setFixedSize(500, 600)
         self.setStyleSheet('background-color:rgb(40, 40, 40)')
@@ -121,10 +136,9 @@ class CreationWindow(QtWidgets.QMainWindow): # второе окно для вы
 
     def enabled(self, object, flag): # "анимация" включен виджет или нет
         if flag:
-            object.setStyleSheet('background-color:rgb(0, 0, 0);color:rgb(215, 215, 215);border-raduis:3px')
+            object.setStyleSheet('background-color:rgb(0, 0, 0);color:rgb(215, 215, 215);border-radius:3px')
         else:
             object.setStyleSheet('background-color:rgb(200, 200, 200);border-radius:3px')
-
 
     def creation(self):   # создание нового словаря в json-файле
         if self.note_mes.toPlainText() != '':
@@ -146,21 +160,17 @@ class CreationWindow(QtWidgets.QMainWindow): # второе окно для вы
                 case 'Reminder':
                     par_3 = f"{self.reminder_date.date().toString('dd-MM-yyyy')}"
 
-
-
             temp.append({'name': self.name.text(), 'mes': self.note_mes.toPlainText(), 'par_3': par_3})
 
             with open('info.json', 'w', encoding='UTF-8') as file:
                 json.dump(temp, file)
-            print(temp[0]['name'])
-            print(len(temp))
+
             add_note(self.name.text(), self.note_mes.toPlainText(), par_3, self.notes, self.scrollLayout)
             self.close()
-           #self.main_win.refresh_window()
-
-
+            restart_application()  # Restart the application
 
 def add_note(name, mes, par_3, list, lay):
+
     temp = QtWidgets.QWidget()
     temp.setStyleSheet('background-color:rgb(0, 0, 0);border-radius:10px')
     temp.setFixedSize(400, 450)
@@ -183,7 +193,7 @@ def add_note(name, mes, par_3, list, lay):
         date_label.setFont(font)
         layout.addWidget(date_label)
         if date.today().strftime('%d-%m-%Y') == par_3:
-            print('dadaadad')
+            date_label.setStyleSheet('color:rgb(255, 0, 0)')
 
 
     text = QtWidgets.QTextBrowser(temp)
@@ -262,10 +272,12 @@ def add_note(name, mes, par_3, list, lay):
 
     del_button = QtWidgets.QPushButton('Удалить', temp)
     del_button.setStyleSheet('background-color:rgb(0, 0, 0);color:rgb(255, 255, 255);border-radius:5px')
+    
     button_layout.addWidget(del_button)
 
     pin_button = QtWidgets.QPushButton('Закрепить', temp)
     pin_button.setStyleSheet('background-color:rgb(0, 0, 0);color:rgb(255, 255, 255);border-radius:5px')
+    
     button_layout.addWidget(pin_button)
 
     # Создаем вертикальный макет и добавляем элементы
@@ -278,14 +290,33 @@ def add_note(name, mes, par_3, list, lay):
     list[-1].setObjectName('note' + str(len(list) - 1))
 
     # Добавляем виджет-контейнер в QGridLayout
-    row = len(list) // 10
-    col = len(list) % 10
+    row = (len(list)-1) // 10
+    col = (len(list)-1) % 10
 
     lay.addWidget(temp, row, col)
 
+    del_button.clicked.connect(lambda: del_note(list.index(temp)))
+    pin_button.clicked.connect(lambda: pin_note(list.index(temp)))
+    
 
 
+def del_note(i):
+    with open('info.json') as file:
+        temp_list = json.load(file)
 
+        del temp_list[i]
+    with open('info.json', 'w') as file:
+        json.dump(temp_list, file)
+    restart_application()
+
+def pin_note(i):
+    with open('info.json') as file:
+        temp_list = json.load(file)
+        moved_note = temp_list.pop(i)
+        temp_list.insert(0, moved_note)
+    with open('info.json', 'w') as file:
+        json.dump(temp_list, file)
+    restart_application()
 
 
 
@@ -300,17 +331,7 @@ def increase_progress(progress_bar):
 
 
 
-
-
-
-
-def test():
-    print('rabotaee')
-
-
-if __name__ == "__main__":
-    import sys
-
+def main():
     app = QtWidgets.QApplication(sys.argv)
 
     window = QtWidgets.QMainWindow()
@@ -320,6 +341,8 @@ if __name__ == "__main__":
 
     window.show()
 
-
     sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
 
